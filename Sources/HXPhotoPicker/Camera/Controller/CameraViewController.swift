@@ -164,9 +164,7 @@ open class CameraViewController: HXBaseViewController, CameraViewControllerProto
         super.viewDidAppear(animated)
         if requestCameraSuccess {
             cameraManager.sessionQueue.async {
-                if !self.sessionCommitConfiguration {
-                    self.cameraManager.session.commitConfiguration()
-                }
+                self.cameraManager.session.commitConfiguration()
                 self.cameraManager.startRunning(applyQueue: false)
             }
         }
