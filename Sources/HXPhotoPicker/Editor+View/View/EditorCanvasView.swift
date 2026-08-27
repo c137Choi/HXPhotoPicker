@@ -57,18 +57,10 @@ class EditorCanvasView: UIView {
         canvasView.bouncesZoom = false
         canvasView.automaticallyAdjustsScrollIndicatorInsets = false
         addSubview(canvasView)
-        if let window = UIApplication.hx_keyWindow,
-           let toolPicker = PKToolPicker.shared(for: window) {
-            toolPicker.overrideUserInterfaceStyle = .light
-            toolPicker.colorUserInterfaceStyle = .light
-            canvasView.tool = toolPicker.selectedTool
-            if let tool = toolPicker.selectedTool as? PKInkingTool {
-                toolWidth = tool.width
-            }
-            toolPicker.addObserver(canvasView)
-            toolPicker.addObserver(self)
-            self.toolPicker = toolPicker
-        }
+        /// 注意：这里不能创建 PKToolPicker
+        /// iOS 17+ 只要调用 PKToolPicker.shared(for: window) 就会在 window 底部自动 dock 一个
+        /// 浮动工具条（UIEditingOverlayViewController 子视图），即使从未进入涂鸦也不会消失
+        /// 所以推迟到 enterDrawing() 用户真正开始涂鸦时才创建
     }
     
     func startDrawing() -> PKToolPicker? {
@@ -104,6 +96,19 @@ class EditorCanvasView: UIView {
     
     func enterDrawing() -> PKToolPicker? {
         isUserInteractionEnabled = true
+        if toolPicker == nil,
+           let window = UIApplication.hx_keyWindow,
+           let toolPicker = PKToolPicker.shared(for: window) {
+            toolPicker.overrideUserInterfaceStyle = .light
+            toolPicker.colorUserInterfaceStyle = .light
+            canvasView.tool = toolPicker.selectedTool
+            if let tool = toolPicker.selectedTool as? PKInkingTool {
+                toolWidth = tool.width
+            }
+            toolPicker.addObserver(canvasView)
+            toolPicker.addObserver(self)
+            self.toolPicker = toolPicker
+        }
         if let tool = toolPicker?.selectedTool as? PKInkingTool {
             canvasView.tool = PKInkingTool(tool.inkType, color: tool.color, width: tool.width / scale)
             toolWidth = tool.width / scale
