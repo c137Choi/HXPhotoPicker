@@ -685,13 +685,12 @@ extension EditorViewController {
         sourceIsJPEG: Bool
     ) -> Data? {
         let compressionQuality: CGFloat = 0.7
-        let hasAlpha = editorImageHasAlpha(image)
-        if let cgImage = image.cgImage ?? image.ci_Image?.cg_Image {
+        let cgImage = image.cgImage ?? image.ci_Image?.cg_Image
+        let hasAlpha = cgImage?.hasAlpha == true
+        if let cgImage = cgImage {
             if hasAlpha {
-                if editorSupportsHEICEncoding,
-                   let data = cgImage.heicData(quality: compressionQuality) {
-                    return data
-                }
+                /// HEIC 编码会丢失透明通道(透明区域被转为不透明背景)
+                /// 含透明通道时始终使用 PNG, 避免透明图片编辑后变成白底图
                 return image.pngData()
             }
             if sourceIsHEIC && editorSupportsHEICEncoding,
@@ -730,20 +729,6 @@ extension EditorViewController {
         contentsOf url: URL
     ) -> Data? {
         try? Data(contentsOf: url, options: .mappedIfSafe)
-    }
-    
-    private func editorImageHasAlpha(
-        _ image: UIImage
-    ) -> Bool {
-        guard let alphaInfo = image.cgImage?.alphaInfo else {
-            return false
-        }
-        switch alphaInfo {
-        case .premultipliedLast, .premultipliedFirst, .last, .first, .alphaOnly:
-            return true
-        default:
-            return false
-        }
     }
     
     func loadLastEditedData() {

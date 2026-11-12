@@ -414,6 +414,22 @@ extension UIImage {
         return image
     }
     
+    /// 是否包含透明通道
+    var hasAlpha: Bool {
+        cgImage?.hasAlpha ?? false
+    }
+}
+
+extension CGImage {
+    /// 是否包含透明通道
+    var hasAlpha: Bool {
+        switch alphaInfo {
+        case .premultipliedLast, .premultipliedFirst, .last, .first, .alphaOnly:
+            return true
+        default:
+            return false
+        }
+    }
 }
 
 extension CGImagePropertyOrientation {

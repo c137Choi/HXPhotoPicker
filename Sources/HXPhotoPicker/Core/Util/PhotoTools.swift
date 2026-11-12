@@ -383,7 +383,7 @@ public struct PhotoTools {
                 height: Int(resultImage.height * ratio)
             )
             guard let image = resultImage.scaleToFillSize(size: size),
-                  let imageData = image.jpegData(compressionQuality: 0.5) else {
+                  let imageData = image.hasAlpha ? image.pngData() : image.jpegData(compressionQuality: 0.5) else {
                 completionHandler(data)
                 return
             }

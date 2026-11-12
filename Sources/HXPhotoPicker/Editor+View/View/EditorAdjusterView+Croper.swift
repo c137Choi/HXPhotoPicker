@@ -292,9 +292,12 @@ extension EditorAdjusterView {
            !cropFactor.isRound,
            cropFactor.maskImage == nil {
             if isJPEGImage {
-                return inputImage.jpegData(compressionQuality: compressionQuality)
+                return imageRef.hasAlpha ? inputImage.pngData() : inputImage.jpegData(compressionQuality: compressionQuality)
             }
             if isHEICImage {
+                if imageRef.hasAlpha {
+                    return inputImage.pngData()
+                }
                 if editorSupportsHEICEncoding,
                    let imageRef = inputImage.cgImage ?? inputImage.ci_Image?.cg_Image,
                    let data = imageRef.heicData(quality: compressionQuality) {
@@ -316,12 +319,8 @@ extension EditorAdjusterView {
         let translationY = -(height * 0.5 - centerY)
         
         var bitmapRawValue = CGBitmapInfo.byteOrder32Little.rawValue
-        let alphaInfo = imageRef.alphaInfo
         var hasAlpha: Bool = false
-        if alphaInfo == .premultipliedLast ||
-            alphaInfo == .premultipliedFirst ||
-            alphaInfo == .last ||
-            alphaInfo == .first ||
+        if imageRef.hasAlpha ||
             cropFactor.isRound ||
             cropFactor.maskImage != nil {
             bitmapRawValue += CGImageAlphaInfo.premultipliedFirst.rawValue
@@ -397,23 +396,19 @@ extension EditorAdjusterView {
             }
             newImageRef = _newImageRef
         }
+        if hasAlpha {
+            /// HEIC/JPEG 编码会丢失透明通道, 含透明通道时始终输出 PNG
+            return newImageRef.pngData()
+        }
         if isHEICImage {
             if editorSupportsHEICEncoding,
                let data = newImageRef.heicData(quality: compressionQuality) {
                 return data
             }
-            return hasAlpha ? newImageRef.pngData() : newImageRef.jpegData(quality: compressionQuality)
+            return newImageRef.jpegData(quality: compressionQuality)
         }
         if isJPEGImage {
-            if hasAlpha {
-                if editorSupportsHEICEncoding,
-                   let data = newImageRef.heicData(quality: compressionQuality) {
-                    return data
-                }
-                return newImageRef.pngData()
-            }else {
-                return newImageRef.jpegData(quality: compressionQuality)
-            }
+            return newImageRef.jpegData(quality: compressionQuality)
         }
         return newImageRef.pngData()
     }
