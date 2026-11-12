@@ -403,6 +403,63 @@ public struct PhotoTools {
         }
     }
     
+    /// 从原始图片数据中解码出指定尺寸的图片
+    /// 通过 ImageIO 生成缩略图, 避免解码整张图片占用大量内存, 同时保留透明通道
+    /// - Parameters:
+    ///   - imageData: 原始图片数据
+    ///   - targetSize: 目标尺寸
+    static func image(
+        for imageData: Data,
+        targetSize: CGSize
+    ) -> UIImage? {
+        guard targetSize.width > 0, targetSize.height > 0 else {
+            return nil
+        }
+        guard let imageSource = CGImageSourceCreateWithData(
+            imageData as CFData,
+            [kCGImageSourceShouldCache: false] as CFDictionary
+        ) else {
+            return nil
+        }
+        let thumbnailOptions: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceThumbnailMaxPixelSize: max(targetSize.width, targetSize.height)
+        ]
+        guard let thumbnail = CGImageSourceCreateThumbnailAtIndex(
+            imageSource,
+            0,
+            thumbnailOptions as CFDictionary
+        ) else {
+            return nil
+        }
+        let image = UIImage(cgImage: thumbnail)
+        if image.size == targetSize {
+            return image
+        }
+        /// 等比缩放后居中裁剪至目标尺寸, 避免拉伸变形
+        let format = UIGraphicsImageRendererFormat()
+        format.opaque = false
+        format.scale = 1
+        let renderer = UIGraphicsImageRenderer(size: targetSize, format: format)
+        return renderer.image { _ in
+            let scale = max(targetSize.width / image.width, targetSize.height / image.height)
+            let drawSize = CGSize(
+                width: image.width * scale,
+                height: image.height * scale
+            )
+            image.draw(
+                in: CGRect(
+                    x: (targetSize.width - drawSize.width) * 0.5,
+                    y: (targetSize.height - drawSize.height) * 0.5,
+                    width: drawSize.width,
+                    height: drawSize.height
+                )
+            )
+        }
+    }
+    
     static func getBasicAnimation(
         _ keyPath: String,
         _ fromValue: Any?,

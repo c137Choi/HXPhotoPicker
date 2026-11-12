@@ -194,20 +194,47 @@ public extension PhotoAsset {
             return nil
         }
         
-        return AssetManager.requestImage(
+        func requestLegacyImage() -> PHImageRequestID? {
+            AssetManager.requestImage(
+                for: phAsset,
+                targetSize: targetSize,
+                deliveryMode: .highQualityFormat,
+                resizeMode: .fast
+            ) { image, info in
+                if targetMode == .fill {
+                    completion?(image, self)
+                }else {
+                    DispatchQueue.global().async {
+                        let image = image?.scaleToFillSize(size: targetSize, mode: targetMode)
+                        DispatchQueue.main.async {
+                            completion?(image, self)
+                        }
+                    }
+                }
+            }
+        }
+        if phAsset.mediaType != .image {
+            return requestLegacyImage()
+        }
+        /// 通过原始图片数据生成缩略图, 避免系统相册返回的缓存图(JPEG)丢失透明通道
+        return AssetManager.requestImageData(
             for: phAsset,
-            targetSize: targetSize,
-            deliveryMode: .highQualityFormat,
-            resizeMode: .fast
-        ) { image, info in
-            if targetMode == .fill {
-                completion?(image, self)
-            }else {
+            version: .current
+        ) { result in
+            switch result {
+            case .success(let imageDataResult):
                 DispatchQueue.global().async {
-                    let image = image?.scaleToFillSize(size: targetSize, mode: targetMode)
+                    let image = PhotoTools.image(
+                        for: imageDataResult.imageData,
+                        targetSize: targetSize
+                    )
                     DispatchQueue.main.async {
                         completion?(image, self)
                     }
+                }
+            case .failure:
+                DispatchQueue.main.async {
+                    _ = requestLegacyImage()
                 }
             }
         }
